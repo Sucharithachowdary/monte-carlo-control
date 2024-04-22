@@ -4,125 +4,74 @@
 To develop a Python program to find the optimal policy for the given RL environment using the Monte Carlo algorithm.
 
 ## PROBLEM STATEMENT
-The FrozenLake environment in OpenAI Gym is a gridworld problem that challenges reinforcement learning agents to navigate a slippery terrain to reach a goal state while avoiding hazards. Note that the environment is closed with a fence, so the agent cannot leave the gridworld.
-### States
-5 Terminal States:
-
-G (Goal): The state the agent aims to reach.
-
-H (Hole): A hazardous state that the agent must avoid at all costs.
-
-11 Non-terminal States:
-
-S (Starting state): The initial position of the agent.
-
-Intermediate states: Grid cells forming a layout that the agent must traverse.
-### Actions
-The agent has 4 possible actions:
-
-0: Left
-1: Down
-2: Right
-3: Up
-### Transition Probabilities
-Slippery surface with a 33.3% chance of moving as intended and a 66.6% chance of moving in orthogonal directions. For example, if the agent intends to move left, there is a
-
-33.3% chance of moving left, a
-33.3% chance of moving down, and a
-33.3% chance of moving up.
-### Rewards
-The agent receives a reward of 1 for reaching the goal state, and a reward of 0 otherwise.
+ To find the optimal policy for the given RL environnment Frozen Lake using the Monte Carlo algorithm which use both exploration and exploitation for finding the optimal policy. Exploitation: Agent taking an action based on the current knowledge. Exploration: Agent taking a new action to learn new information. The epsilon is used to balance the exploration and exploitation, The value of the epsilon decreases gradually which indicates sufficient exploration and the agent has gained the new information.
 
 ## MONTE CARLO CONTROL ALGORITHM
-1.Initialize the state value function V(s) and the policy π(s) arbitrarily.
+Initialize the state value function V(s) and the policy π(s) arbitrarily.
 
-2.Generate an episode using π(s) and store the state, action, and reward sequence.
+Generate an episode using π(s) and store the state, action, and reward sequence.
 
-3.For each state s appearing in the episode:
+For each state s appearing in the episode:
 
-G ← return following the first occurrence of s
-Append G to Returns(s)
-V(s) ← average(Returns(s))
-4.For each state s in the episode:
+G ← return following the first occurrence of s Append G to Returns(s) V(s) ← average(Returns(s)) For each state s in the episode: π(s) ← argmax_a ∑_s' P(s'|s,a)V(s') Repeat steps 2-4 until the policy converges.
 
-π(s) ← argmax_a ∑_s' P(s'|s,a)V(s')
-5.Repeat steps 2-4 until the policy converges.
+Use the function decay_schedule to decay the value of epsilon and alpha.
 
-6.Use the function decay_schedule to decay the value of epsilon and alpha.
+Use the function gen_traj to generate a trajectory.
 
-7.Use the function gen_traj to generate a trajectory.
+Use the function tqdm to display the progress bar.
 
-8.Use the function tqdm to display the progress bar.
+After the policy converges, use the function np.argmax to find the optimal policy. The function takes the following arguments:
 
-9.After the policy converges, use the function np.argmax to find the optimal policy. The function takes the following arguments:
-
-Q: The Q-table.
-axis: The axis along which to find the maximum value
+Q: The Q-table. axis: The axis along which to find the maximum value.
+```
+Developed by: Ksucharitha
+Reg no:212221240021
+```
 ## MONTE CARLO CONTROL FUNCTION
-pip install git+https://github.com/mimoralea/gym-walk#egg=gym-walk
-import warnings ; warnings.filterwarnings('ignore')
+```
+from tqdm import tqdm
+def mc_control(env, gamma = 1.0, init_alpha = 0.5, min_alpha = 0.01,
+               alpha_decay_ratio = 0.5, init_epsilon = 1.0, min_epsilon = 0.1,
+               epsilon_decay_ratio = 0.9, n_episodes = 3000, max_steps = 200,
+               first_visit = True):
+  nS, nA = env.observation_space.n, env.action_space.n
 
-import gym, gym_walk
-import numpy as np
+  discounts = np.logspace(0,max_steps, num=max_steps,
+                          base=gamma, endpoint = False)
 
-import random
-import warnings
+  alphas = decay_schedule(init_alpha, min_alpha, alpha_decay_ratio, n_episodes)
 
-warnings.filterwarnings('ignore', category=DeprecationWarning)
-np.set_printoptions(suppress=True)
-random.seed(123); np.random.seed(123)
-env = gym.make('FrozenLake-v1')
-P = env.env.P
-init_state = env.reset()
-goal_state = 15
-P
-def print_policy(pi, P, action_symbols=('<', 'v', '>', '^'), n_cols=4, title='Policy:'):
-    print(title)
-    arrs = {k:v for k,v in enumerate(action_symbols)}
-    for s in range(len(P)):
-        a = pi(s)
-        print("| ", end="")
-        if np.all([done for action in P[s].values() for _, _, _, done in action]):
-            print("".rjust(9), end=" ")
-        else:
-            print(str(s).zfill(2), arrs[a].rjust(6), end=" ")
-        if (s + 1) % n_cols == 0: print("|")
-        def print_state_value_function(V, P, n_cols=4, prec=3, title='State-value function:'):
-    print(title)
-    for s in range(len(P)):
-        v = V[s]
-        print("| ", end="")
-        if np.all([done for action in P[s].values() for _, _, _, done in action]):
-            print("".rjust(9), end=" ")
-        else:
-            print(str(s).zfill(2), '{}'.format(np.round(v, prec)).rjust(6), end=" ")
-        if (s + 1) % n_cols == 0: print("|")
-        def probability_success(env, pi, goal_state, n_episodes=100, max_steps=200):
-    random.seed(123); np.random.seed(123) ; env.seed(123)
-    results = []
-    for _ in range(n_episodes):
-        state, done, steps = env.reset(), False, 0
-        while not done and steps < max_steps:
-            state, _, done, h = env.step(pi(state))
-            steps += 1
-        results.append(state == goal_state)
-    return np.sum(results)/len(results)
-    
-def mean_return(env, pi, n_episodes=100, max_steps=200):
-    random.seed(123); np.random.seed(123) ; env.seed(123)
-    results = []
-    for _ in range(n_episodes):
-        state, done, steps = env.reset(), False, 0
-        results.append(0.0)
-        while not done and steps < max_steps:
-            state, reward, done, _ = env.step(pi(state))
-            results[-1] += reward
-            steps += 1
-    return np.mean(results)
+  epsilons = decay_schedule(init_epsilon, min_epsilon, epsilon_decay_ratio, n_episodes)
+
+  pi_track = []
+
+  Q = np.zeros((nS, nA), dtype = np.float64)
+  Q_track = np.zeros((n_episodes, nS, nA), dtype = np.float64)
+
+  select_action = lambda state, Q, epsilon: np.argmax(Q[state]) if np.random.random() > epsilon_decay_ratio else np.random.randint(len(Q[state]))
+
+  for e in tqdm(range(n_episodes), leave = False):
+    trajectory = generate_trajectory(select_action, Q, epsilons[e], env, max_steps)
+    visited = np.zeros((nS, nA), dtype = bool)
+    for t, (state, action, reward, _, _) in enumerate(trajectory):
+      if visited[state][action] and first_visit:
+        continue
+      visited[state][action] = True
+      n_steps = len(trajectory[t:])
+      G = np.sum(discounts[:n_steps] * trajectory[t:, 2])
+      Q[state][action] += alphas[e] * (G - Q[state][action])
+    Q_track[e] = Q
+    pi_track.append(np.argmax(Q, axis = 1))
+  V = np.max(Q, axis = 1)
+  pi = lambda s: {s:a for s, a in enumerate(np.argmax(Q, axis = 1))}[s]
+  return Q, V, pi
+```
 
 ## OUTPUT:
 Mention the optimal policy, optimal value function , success rate for the optimal policy.
+<img width="517" alt="output" src="https://github.com/Sucharithachowdary/monte-carlo-control/assets/94166007/c8c210ab-d3dc-41de-ac65-433513ef40b3">
 
 ## RESULT:
 
-Write your result here
+Therefore a python program is successfully developed to find the optimal policy for the given RL environment using the Monte Carlo Algorithm.
